@@ -12,12 +12,10 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
   <HelmetProvider>
-    <ChakraProvider>
-      <BrowserRouter>
-        <Suspense>
-          <App />
-        </Suspense>
-      </BrowserRouter>
-    </ChakraProvider>
+    <BrowserRouter>
+      <Suspense>
+        <App />
+      </Suspense>
+    </BrowserRouter>
   </HelmetProvider>
 );
