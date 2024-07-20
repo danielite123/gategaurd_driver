@@ -1,7 +1,6 @@
 /* eslint-disable react/jsx-no-bind */
 /* eslint-disable no-undef */
 import PropTypes from 'prop-types';
-import { Skeleton } from '@chakra-ui/react';
 import React, { useRef, useState, useEffect } from 'react';
 import {
   Marker,
@@ -90,9 +89,7 @@ export default function MapView(props) {
     console.log('Google Maps API is not loaded yet...');
     return (
       <Stack>
-        <Skeleton height="20px" />
-        <Skeleton height="20px" />
-        <Skeleton height="20px" />
+        <p>Loading......</p>
       </Stack>
     ); // Or any other loading indicator
   }
