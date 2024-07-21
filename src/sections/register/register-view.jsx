@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { toast, ToastContainer } from 'react-toastify';
 
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
@@ -61,9 +61,11 @@ export default function RegisterView() {
         toast.success('Register successful');
       } else {
         setError(response.data.message);
+        toast.error(setError);
       }
     } catch (err) {
       setError('An error occurred during registration. Please try again.');
+      toast.error('An error occurred during registration. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +81,6 @@ export default function RegisterView() {
         height: 1,
       }}
     >
-      <ToastContainer />
       <Logo
         sx={{
           position: 'fixed',

@@ -1,9 +1,9 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
 import { useState, useCallback } from 'react';
-import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -85,7 +85,6 @@ export default function LoginView() {
         height: 1,
       }}
     >
-      <ToastContainer />
       <Logo
         sx={{
           position: 'fixed',
