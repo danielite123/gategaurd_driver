@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import Stack from '@mui/material/Stack';
 import Popover from '@mui/material/Popover';
@@ -53,12 +55,14 @@ export default function OrderTableRow({
 
       // Handle success, maybe update UI or show a notification
       console.log('Order accepted successfully:', response.data);
+      toast.success('Order accepted successfully!');
 
       // Navigate to the order view page after accepting the order
       navigate('/'); // Replace with your actual order view route
     } catch (error) {
       // Handle error, show error message or retry logic
       console.error('Error accepting order:', error);
+      toast.error('Failed to accept order. Please try again later.');
     } finally {
       handleCloseMenu(); // Close the popover after action
     }
