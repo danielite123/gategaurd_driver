@@ -53,7 +53,19 @@ export default function LoginView() {
       localStorage.setItem('driverId', driver._id);
 
       // Redirect to another page after successful login
-      router.push('/upload');
+      if (driver.profilePic) {
+        // Check if driverLicense exists
+        if (driver.driverLicense) {
+          // Redirect to /home if both profilePic and driverLicense exist
+          router.push('/');
+        } else {
+          // Redirect to /upload-license if profilePic exists but driverLicense does not
+          router.push('/upload-license');
+        }
+      } else {
+        // Redirect to /upload if profilePic does not exist
+        router.push('/upload');
+      }
 
       // Display success message
       toast.success('Login successful');
