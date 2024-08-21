@@ -1,14 +1,7 @@
-/* eslint-disable react/jsx-no-bind */
-/* eslint-disable no-undef */
+import 'leaflet/dist/leaflet.css';
 import PropTypes from 'prop-types';
-import React, { useRef, useState, useEffect } from 'react';
-import {
-  Marker,
-  GoogleMap,
-  Autocomplete,
-  useJsApiLoader,
-  DirectionsRenderer,
-} from '@react-google-maps/api';
+import React, { useState, useRef, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -16,53 +9,68 @@ import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Unstable_Grid2';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
 import Label from 'src/components/label';
 
-// ----------------------------------------------------------------------
+import GeoapifyAutocomplete from './GeoapifyAutocomplete'; // Assuming it's in the same directory
+
+const GEOAPIFY_API_KEY = import.meta.env.VITE_REACT_APP_GEOAPIFY_API_KEY;
+
+function MyMapComponent({ center, setCenter, currentLocation, setCurrentLocation }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView(center, 15);
+  }, [center, map]);
+
+  return currentLocation ? <Marker position={currentLocation} /> : null;
+}
 
 export default function MapView(props) {
   const { sx, ...other } = props;
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: import.meta.env.VITE_REACT_APP_GOOGLE_MAP_API_KEY,
-    libraries: ['places'],
-  });
   const [center, setCenter] = useState({ lat: 0, lng: 0 });
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [directionResponse, setDirectionResponse] = useState(null);
   const [distance, setDistance] = useState('');
   const [duration, setDuration] = useState('');
 
   const originRef = useRef();
-
   const destinationRef = useRef();
 
+  const handleOriginSelect = (place) => {
+    originRef.current = place;
+  };
+
+  const handleDestinationSelect = (place) => {
+    destinationRef.current = place;
+  };
+
   async function calculateRoute() {
-    if (!originRef.current.value || !destinationRef.current.value) {
+    if (!originRef.current || !destinationRef.current) {
       console.error('Origin or destination is empty');
       return;
     }
 
-    const directionsService = new google.maps.DirectionsService();
-
-    directionsService.route(
-      {
-        origin: { query: originRef.current.value },
-        destination: { query: destinationRef.current.value },
-        travelMode: google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (status === google.maps.DirectionsStatus.OK) {
-          setDirectionResponse(result);
-          setDistance(result.routes[0].legs[0].distance.text);
-          setDuration(result.routes[0].legs[0].duration.text);
-        } else {
-          console.error('Directions request failed due to ');
-        }
-      }
+    const response = await fetch(
+      `https://api.geoapify.com/v1/routing?waypoints=${originRef.current.geometry.coordinates.join(
+        ','
+      )}|${destinationRef.current.geometry.coordinates.join(
+        ','
+      )}&mode=drive&apiKey=${GEOAPIFY_API_KEY}`
     );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const route = data.features[0];
+      const distanceInKm = (route.properties.distance / 1000).toFixed(2);
+      const durationInMinutes = (route.properties.time / 60).toFixed(2);
+
+      setDistance(`${distanceInKm} km`);
+      setDuration(`${durationInMinutes} mins`);
+    } else {
+      console.error('Error fetching directions:', data);
+    }
   }
 
   useEffect(() => {
@@ -80,19 +88,6 @@ export default function MapView(props) {
     }
   }, []);
 
-  if (loadError) {
-    console.error('Error loading Google Maps API:', loadError);
-    return <div>Error loading map. Please try again later.</div>;
-  }
-
-  if (!isLoaded) {
-    console.log('Google Maps API is not loaded yet...');
-    return (
-      <Stack>
-        <p>Loading......</p>
-      </Stack>
-    ); // Or any other loading indicator
-  }
   return (
     <Container
       sx={{
@@ -123,20 +118,17 @@ export default function MapView(props) {
               }}
               {...other}
             >
-              <GoogleMap
-                center={center}
-                zoom={15}
-                mapContainerStyle={{ width: '100%', height: '500px' }}
-                options={{
-                  zoomControl: false,
-                  streetViewControl: false,
-                  mapTypeControl: false,
-                  fullscreenControl: false,
-                }}
-              >
-                {currentLocation && <Marker position={currentLocation} />}
-                {directionResponse && <DirectionsRenderer directions={directionResponse} />}
-              </GoogleMap>
+              <MapContainer center={center} zoom={15} style={{ width: '100%', height: '500px' }}>
+                <TileLayer
+                  url={`https://maps.geoapify.com/v1/tile/osm/{z}/{x}/{y}.png?apiKey=${GEOAPIFY_API_KEY}`}
+                />
+                <MyMapComponent
+                  center={center}
+                  setCenter={setCenter}
+                  currentLocation={currentLocation}
+                  setCurrentLocation={setCurrentLocation}
+                />
+              </MapContainer>
             </Box>
           </Box>
         </Grid>
@@ -156,28 +148,18 @@ export default function MapView(props) {
             <Typography variant="h6">Destination</Typography>
 
             <Stack spacing={3} mt={5}>
-              <Divider sx={{ borderStyle: 'dashed' }} />
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  From
-                </Typography>
-
-                <Label color="success">Gidan Kwano</Label>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  To
-                </Typography>
-
-                <Label color="success">Bosso</Label>
-              </Stack>
+              <GeoapifyAutocomplete onSelect={handleOriginSelect} />
+              <GeoapifyAutocomplete onSelect={handleDestinationSelect} />
+              <Button variant="contained" onClick={calculateRoute}>
+                Calculate Route
+              </Button>
               <Divider sx={{ borderStyle: 'dashed' }} />
               <Stack direction="row" justifyContent="space-between">
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   Distance
                 </Typography>
 
-                <Label color="success">ikm</Label>
+                <Label color="success">{distance}</Label>
               </Stack>
 
               <Stack direction="row" justifyContent="space-between">
@@ -185,7 +167,7 @@ export default function MapView(props) {
                   Duration
                 </Typography>
 
-                <Label color="success">2hrs</Label>
+                <Label color="success">{duration}</Label>
               </Stack>
 
               <Divider sx={{ borderStyle: 'dashed' }} />
