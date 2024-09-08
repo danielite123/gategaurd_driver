@@ -34,7 +34,7 @@ export default function AppPage() {
         const token = localStorage.getItem('token');
         const driverId = localStorage.getItem('driverId');
         const response = await axios.get(
-          `https://gateguard-backend.onrender.com/order/get-driver-completed-orders/${driverId}`,
+          `http://localhost:5000/order/get-driver-completed-orders/${driverId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

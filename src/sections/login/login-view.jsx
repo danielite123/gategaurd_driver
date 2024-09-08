@@ -35,7 +35,7 @@ export default function LoginView() {
 
   const handleClick = async () => {
     try {
-      const response = await axios.post('https://gateguard-backend.onrender.com/driver/login', {
+      const response = await axios.post('http://localhost:5000/driver/login', {
         email,
         password,
       });
@@ -158,7 +158,7 @@ export default function LoginView() {
             }}
             variant="h4"
           >
-            Sign in to GateGuard
+            Sign in to Num Ride
           </Typography>
 
           <Typography variant="body2" sx={{ mt: 2, mb: 5 }}>

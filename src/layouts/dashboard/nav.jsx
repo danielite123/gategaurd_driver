@@ -40,7 +40,7 @@ export default function Nav({ openNav, onCloseNav }) {
         }
 
         // Fetch user data using the token
-        const response = await axios.get('https://gateguard-backend.onrender.com/driver/profile', {
+        const response = await axios.get('http://localhost:5000/driver/profile', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -119,7 +119,7 @@ export default function Nav({ openNav, onCloseNav }) {
       <Box display="flex" alignItems="center">
         <Logo sx={{ mt: 3, ml: 4 }} />
         <Typography variant="body1" sx={{ marginLeft: 1, fontSize: '14px', mt: 3 }}>
-          GateGuard Bolt
+          Num Ride
         </Typography>
       </Box>
 

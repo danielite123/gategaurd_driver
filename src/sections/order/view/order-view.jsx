@@ -33,14 +33,11 @@ export default function OrderPage() {
     const fetchOrders = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(
-          'https://gateguard-backend.onrender.com/order/get-orders',
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await axios.get('http://localhost:5000/order/get-orders', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         setOrders(response.data);
       } catch (error) {
         console.error('Error fetching orders:', error);

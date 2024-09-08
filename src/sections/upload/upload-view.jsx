@@ -51,16 +51,12 @@ export default function LoginView() {
 
     setUploading(true);
     try {
-      const response = await axios.put(
-        'https://gateguard-backend.onrender.com/driver/update-picture',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${localStorage.getItem('token')}`, // Adjust based on your auth strategy
-          },
-        }
-      );
+      const response = await axios.put('http://localhost:5000/driver/update-picture', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${localStorage.getItem('token')}`, // Adjust based on your auth strategy
+        },
+      });
 
       if (response.data.success) {
         toast.success('Profile picture updated successfully!');

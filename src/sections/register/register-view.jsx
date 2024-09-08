@@ -52,10 +52,7 @@ export default function RegisterView() {
 
     try {
       console.log('Form Values:', formValues); // Debugging log
-      const response = await axios.post(
-        'https://gateguard-backend.onrender.com/driver/register',
-        formValues
-      );
+      const response = await axios.post('http://localhost:5000/driver/register', formValues);
       if (response.data.success) {
         router.push('/login');
         toast.success('Register successful');
@@ -97,7 +94,7 @@ export default function RegisterView() {
             maxWidth: 420,
           }}
         >
-          <Typography variant="h4">Sign up to GateGaurd</Typography>
+          <Typography variant="h4">Sign up to Num Ride</Typography>
 
           <Typography variant="body2" sx={{ mt: 2, mb: 3 }}>
             Already have an account?

@@ -8,7 +8,7 @@ export default function OrderPage() {
   return (
     <>
       <Helmet>
-        <title> User | GateGaurd </title>
+        <title> User | Num Ride </title>
       </Helmet>
 
       <OrderView />

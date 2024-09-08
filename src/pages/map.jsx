@@ -8,7 +8,7 @@ export default function MapPage() {
   return (
     <>
       <Helmet>
-        <title> Map View | GateGaurd </title>
+        <title> Map View | Num Ride </title>
       </Helmet>
 
       <MapView />

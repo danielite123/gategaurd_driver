@@ -1,7 +1,13 @@
-import 'leaflet/dist/leaflet.css';
+import axios from 'axios';
+import maplibregl from 'maplibre-gl';
 import PropTypes from 'prop-types';
-import React, { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+import React, { useRef, useState, useEffect } from 'react';
+import * as maptilersdk from '@maptiler/sdk';
+import '@maptiler/sdk/dist/maptiler-sdk.css';
+import 'react-toastify/dist/ReactToastify.css';
+import MapTilerDirections from '@maptiler/sdk/dist/maptiler-gl-directions';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -9,91 +15,143 @@ import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Unstable_Grid2';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
 import Label from 'src/components/label';
 
-import GeoapifyAutocomplete from './GeoapifyAutocomplete'; // Assuming it's in the same directory
+const mapTilerApiKey = 'izVLsfGQYDEWQZ0Fq28v'; // Replace with your MapTiler API key
 
-const GEOAPIFY_API_KEY = import.meta.env.VITE_REACT_APP_GEOAPIFY_API_KEY;
+const calculatePrice = (distance) => {
+  return parseFloat(distance) * 10; // Example calculation: $10 per kilometer
+};
 
-function MyMapComponent({ center, setCenter, currentLocation, setCurrentLocation }) {
-  const map = useMap();
-
-  useEffect(() => {
-    map.setView(center, 15);
-  }, [center, map]);
-
-  return currentLocation ? <Marker position={currentLocation} /> : null;
-}
-
-export default function MapView(props) {
+export default function AppView(props) {
   const { sx, ...other } = props;
-  const [center, setCenter] = useState({ lat: 0, lng: 0 });
-  const [currentLocation, setCurrentLocation] = useState(null);
+  const navigate = useNavigate();
+  const mapContainer = useRef(null);
+  const map = useRef(null);
+  const [fromValue, setFromValue] = useState('');
+  const [toValue, setToValue] = useState('');
+  const [fromSuggestions, setFromSuggestions] = useState([]);
+  const [toSuggestions, setToSuggestions] = useState([]);
+  const [directions, setDirections] = useState(null);
   const [distance, setDistance] = useState('');
   const [duration, setDuration] = useState('');
-
-  const originRef = useRef();
-  const destinationRef = useRef();
-
-  const handleOriginSelect = (place) => {
-    originRef.current = place;
-  };
-
-  const handleDestinationSelect = (place) => {
-    destinationRef.current = place;
-  };
-
-  async function calculateRoute() {
-    if (!originRef.current || !destinationRef.current) {
-      console.error('Origin or destination is empty');
-      return;
-    }
-
-    const response = await fetch(
-      `https://api.geoapify.com/v1/routing?waypoints=${originRef.current.geometry.coordinates.join(
-        ','
-      )}|${destinationRef.current.geometry.coordinates.join(
-        ','
-      )}&mode=drive&apiKey=${GEOAPIFY_API_KEY}`
-    );
-
-    const data = await response.json();
-
-    if (response.ok) {
-      const route = data.features[0];
-      const distanceInKm = (route.properties.distance / 1000).toFixed(2);
-      const durationInMinutes = (route.properties.time / 60).toFixed(2);
-
-      setDistance(`${distanceInKm} km`);
-      setDuration(`${durationInMinutes} mins`);
-    } else {
-      console.error('Error fetching directions:', data);
-    }
-  }
+  const [price, setPrice] = useState(''); // Add price state
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setCenter({ lat: latitude, lng: longitude });
-          setCurrentLocation({ lat: latitude, lng: longitude });
-        },
-        (error) => {
-          console.error('Error getting current location:', error);
-        }
-      );
-    }
+    if (map.current) return; // Initialize map only once
+    map.current = new maplibregl.Map({
+      container: mapContainer.current,
+      style: `https://api.maptiler.com/maps/streets/style.json?key=${mapTilerApiKey}`,
+      center: [-74.5, 40],
+      zoom: 9,
+      attributionControl: false,
+    });
+
+    const directions = new MapTilerDirections({
+      apiKey: mapTilerApiKey,
+      unit: 'metric',
+      profile: 'driving',
+    });
+
+    map.current.addControl(directions, 'top-left');
+
+    setDirections(directions);
   }, []);
 
+  const handleInputChange = async (e, setValue, setSuggestions) => {
+    const value = e.target.value;
+    setValue(value);
+
+    try {
+      const response = await axios.get(`https://api.maptiler.com/geocoding/${value}.json`, {
+        params: {
+          key: mapTilerApiKey,
+          autocomplete: true,
+          country: 'NG', // Limit results to Nigeria
+          bbox: '4.9648,8.0737,7.9682,10.8680', // Optionally specify the bounding box for Niger State, Nigeria
+        },
+      });
+      const data = response.data;
+      setSuggestions(
+        data.features.map((feature) => ({
+          id: feature.id,
+          place_name: feature.place_name,
+          coordinates: feature.center,
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+    }
+  };
+
+  const handleSuggestionClick = (place_name, coordinates, setValue, setSuggestions, isFrom) => {
+    setValue(place_name);
+    setSuggestions([]);
+    if (isFrom) {
+      directions.setOrigin(coordinates);
+    } else {
+      directions.setDestination(coordinates);
+    }
+  };
+
+  const handleCalculateRoute = () => {
+    if (fromValue && toValue) {
+      directions.setOrigin(fromValue);
+      directions.setDestination(toValue);
+
+      directions.on('route', (event) => {
+        const route = event.route[0];
+        const distance = (route.distance / 1000).toFixed(2); // Convert meters to kilometers
+        const duration = (route.duration / 3600).toFixed(2); // Convert seconds to hours
+
+        setDistance(`${distance} km`);
+        setDuration(`${duration} hr`);
+
+        const calculatedPrice = calculatePrice(distance);
+        setPrice(`#${calculatedPrice.toFixed(2)}`); // Set the price
+      });
+    }
+  };
+
+  const handlePlaceTrip = async () => {
+    if (fromValue && toValue && distance && duration && price) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.post(
+          'http://localhost:5000/order/create-order',
+          {
+            from: fromValue,
+            to: toValue,
+            distance,
+            duration,
+            price,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const orderId = response.data._id; // Extract the order ID from the response
+        console.log('Order placed successfully:', response.data);
+        toast.success('Order placed successfully!'); // Display success toast
+        navigate(`/payment?orderId=${orderId}`); // Pass orderId as a query parameter
+      } catch (error) {
+        console.error('Error placing order:', error);
+        toast.error('Failed to place order.'); // Display error toast
+      }
+    } else {
+      console.error('Please provide all required information.');
+    }
+  };
+
   return (
-    <Container
-      sx={{
-        minHeight: 1,
-      }}
-    >
+    <Container sx={{ minHeight: 1 }}>
       <Typography variant="h4" sx={{ mb: 4 }}>
         Hi, Welcome back 👋
       </Typography>
@@ -118,17 +176,7 @@ export default function MapView(props) {
               }}
               {...other}
             >
-              <MapContainer center={center} zoom={15} style={{ width: '100%', height: '500px' }}>
-                <TileLayer
-                  url={`https://maps.geoapify.com/v1/tile/osm/{z}/{x}/{y}.png?apiKey=${GEOAPIFY_API_KEY}`}
-                />
-                <MyMapComponent
-                  center={center}
-                  setCenter={setCenter}
-                  currentLocation={currentLocation}
-                  setCurrentLocation={setCurrentLocation}
-                />
-              </MapContainer>
+              <div ref={mapContainer} style={{ height: '530px', width: '100%' }} />
             </Box>
           </Box>
         </Grid>
@@ -148,17 +196,91 @@ export default function MapView(props) {
             <Typography variant="h6">Destination</Typography>
 
             <Stack spacing={3} mt={5}>
-              <GeoapifyAutocomplete onSelect={handleOriginSelect} />
-              <GeoapifyAutocomplete onSelect={handleDestinationSelect} />
-              <Button variant="contained" onClick={calculateRoute}>
-                Calculate Route
+              <TextField
+                fullWidth
+                label="From"
+                value={fromValue}
+                onChange={(e) => handleInputChange(e, setFromValue, setFromSuggestions, true)}
+              />
+              {fromSuggestions.length > 0 && (
+                <Box
+                  sx={{
+                    position: 'relative',
+                    zIndex: 1,
+                    bgcolor: 'background.paper',
+                    boxShadow: 1,
+                  }}
+                >
+                  {fromSuggestions.map((suggestion) => (
+                    <Box
+                      key={suggestion.id}
+                      sx={{ p: 2, cursor: 'pointer' }}
+                      onClick={() =>
+                        handleSuggestionClick(
+                          suggestion.place_name,
+                          suggestion.coordinates,
+                          setFromValue,
+                          setFromSuggestions,
+                          true
+                        )
+                      }
+                    >
+                      {suggestion.place_name}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              <TextField
+                fullWidth
+                label="To"
+                value={toValue}
+                onChange={(e) => handleInputChange(e, setToValue, setToSuggestions, false)}
+                sx={{ zIndex: 0 }}
+              />
+              {toSuggestions.length > 0 && (
+                <Box
+                  sx={{
+                    position: 'relative',
+                    zIndex: 1,
+                    bgcolor: 'background.paper',
+                    boxShadow: 1,
+                  }}
+                >
+                  {toSuggestions.map((suggestion) => (
+                    <Box
+                      key={suggestion.id}
+                      sx={{ p: 2, cursor: 'pointer' }}
+                      onClick={() =>
+                        handleSuggestionClick(
+                          suggestion.place_name,
+                          suggestion.coordinates,
+                          setToValue,
+                          setToSuggestions,
+                          false
+                        )
+                      }
+                    >
+                      {suggestion.place_name}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              <Button
+                fullWidth
+                size="large"
+                variant="contained"
+                sx={{ mt: 5, mb: 3 }}
+                onClick={handleCalculateRoute}
+              >
+                Calculate Routes
               </Button>
               <Divider sx={{ borderStyle: 'dashed' }} />
               <Stack direction="row" justifyContent="space-between">
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   Distance
                 </Typography>
-
                 <Label color="success">{distance}</Label>
               </Stack>
 
@@ -166,11 +288,19 @@ export default function MapView(props) {
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   Duration
                 </Typography>
-
                 <Label color="success">{duration}</Label>
               </Stack>
 
-              <Divider sx={{ borderStyle: 'dashed' }} />
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Price
+                </Typography>
+                <Label color="success">{price}</Label>
+              </Stack>
+
+              <Button fullWidth size="large" variant="contained" onClick={handlePlaceTrip}>
+                Place Trip
+              </Button>
             </Stack>
           </div>
         </Grid>
@@ -179,6 +309,6 @@ export default function MapView(props) {
   );
 }
 
-MapView.propTypes = {
+AppView.propTypes = {
   sx: PropTypes.object,
 };

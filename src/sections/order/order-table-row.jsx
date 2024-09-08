@@ -44,7 +44,7 @@ export default function OrderTableRow({
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `https://gateguard-backend.onrender.com/order/accept/${id}`,
+        `http://localhost:5000/order/accept/${id}`,
         {},
         {
           headers: {
